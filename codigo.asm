@@ -100,6 +100,10 @@
 			syscall
 			add $t3, $v0, $zero # quantidade caracteres lidos
 			beq $t3, $zero, exit # é o fim do arquivo?
+			
+			lb $a0, buffer_entrada($zero)
+			addi $v0, $zero, 1
+			syscall
 					
 			# Transforma o caracter lido em inteiro
 			lb $a1, buffer_entrada($zero)
@@ -116,13 +120,10 @@
 
 			add $s5, $s6, $zero
 			
-			
-			
 			j loopMatriz
 			
 			# Se for um espaço, então o número inteiro já foi lido
 			ehEspaco:
-				
 				addi $s0, $zero, 1 # constante 1
 				addi $s1, $zero, 2 # constante 2
 				addi $s2, $zero, 3 # constante 3
@@ -169,22 +170,26 @@
 			
 				formula:
 					sub $t5, $t6, $t5
-					addi $t5, $t5, 48
 					
-
+					# r1 = t5 / 100 parte inteira
+					# rt = t5 - 100
+					# r2 = rt / 10 parte inteira
+					# r3 = rt - (t7 * 10) isso é unidade
+					
+					# cada r subtrai 48 e escreve no arquivo sem espaço
 			
+	
 			# Aqui o valor obtido na fórmula é passado para o buffer e é escrito no arquivo de saída	
-			sw $t5, buffer_saida # move o buffer para o $t5
-			
-			add $a0, $zero, $t5
-			addi $v0, $zero, 1
-			syscall
-			
-			
+			sw $t6, buffer_saida # move o buffer para o $t5
 			move $a0, $t1	# descriptor que está em t1 vem para a0
 			la  $a1, buffer_saida  # buffer de saida é o mesmo
 			add  $a2,  $zero, $t3	 # a leitura (syscall) 14 retorna a quantidade de caracteres em v0. Precisa ser passado aqui
 			addi $v0, $zero, 15	 # syscall para escrever no arquivo
+			syscall
+			
+			move $a0, $t1
+			la $a1, espaco
+			addi $v0, $zero, 15
 			syscall
 			
 			add $t5, $zero, $zero
@@ -212,11 +217,6 @@
 		
 	
 	exit:
-		move $a0, $t1
-		la $a1, finalarquivo
-		addi $a2, $zero, 1
-		addi $v0, $zero, 15
-		syscall
 		
 		addi $v0, $zero, 10  # syscall para encerrar o programa
 		syscall
