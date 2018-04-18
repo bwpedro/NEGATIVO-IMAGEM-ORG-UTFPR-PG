@@ -1,12 +1,12 @@
 .data
 
-	entrada: .asciiz "./entrada.pgm"
+	entrada: .asciiz "./fas.pgm"
 	saida:	.asciiz "saida.pgm"
 	espaco: .asciiz " "
 	finalarquivo: .byte '0'
-	buffer_entrada: .word 0
-	buffer_saida: .word 0
-	vetor: .word 1, 2, 3
+	buffer_entrada: .word
+	buffer_saida: .word
+	vetor: .word 0, 0, 0, 0
 	
 .text
 
@@ -41,7 +41,6 @@
 		move $t1, $v0	       # salva o pointer do arquivo aberto
 			
 		# Aqui lê a primeira, a segunda e a terceira linha do arquivo de entrada e salva no arquivo de saída
-		# ****Falta ver se o barran deu certo
 		add $s0, $zero, $zero # contadora
 		add $s1, $zero, $zero # comparação
 		addi $s2, $zero, 4 # numero de vezes do loop
@@ -49,9 +48,8 @@
 		add $s4, $zero, $zero
 			
 		loopDescarte:
-			#li buffer_entrada, 0
 			slt $s1, $s0, $s2 
-			beq $s1, $zero, aqui2
+			beq $s1, $zero, definicoesLoop
 				loopFimLinha:
 				
 					#le
@@ -78,18 +76,15 @@
 					fimDaLinha:
 						addi $s0, $s0, 1
 						j loopDescarte
-			
-		aqui2:
-		
+						
+						
 		# Aqui os números da matriz começam a ser identificados e transformados por meio da fórmula
+		definicoesLoop:
 		addi $s4, $zero, 32 # ascii espaço
 		la $t4, vetor # carrego o vetor em $t4
-
-		definicoesLoop:
-		
 		add $s3, $zero, $zero # quantidade lida
-		addi $s5, $zero, 8 # ponteiro para a posição do vetor
-		addi $s6, $zero, 8 # constante 8
+		addi $s5, $zero, 12 # ponteiro para a posição do vetor
+		addi $s6, $zero, 12 # constante 8
 		
 		loopMatriz:
 			# Lê o caracter
@@ -100,10 +95,6 @@
 			syscall
 			add $t3, $v0, $zero # quantidade caracteres lidos
 			beq $t3, $zero, exit # é o fim do arquivo?
-			
-			lb $a0, buffer_entrada($zero)
-			addi $v0, $zero, 1
-			syscall
 					
 			# Transforma o caracter lido em inteiro
 			lb $a1, buffer_entrada($zero)
@@ -111,13 +102,11 @@
 			beq $a1, $t7, ehEspaco # é \n? 
 			addi $s3, $s3, 1
 			addi $a1, $a1, -48
-
 			
 			# Insiro o caracter lido na posição do vetor
 			add $s5, $t4, $s5
 			sw $a1,0($s5)
 			addi $s6, $s6, -4
-
 			add $s5, $s6, $zero
 			
 			j loopMatriz
@@ -129,7 +118,6 @@
 				addi $s2, $zero, 3 # constante 3
 				sub $s4, $s2, $s3 # loop começa com esse valor (3-quantidadeLida)
 				add $s5, $zero, $zero # flag de comparacao
-				#addi $s3, $s3, 3
 				add $s6, $zero, $zero #lugar onde vai ser carregado as posições do vetor
 				add $s7, $zero, $zero # cont
 				
@@ -144,15 +132,14 @@
 				
 						
 					mult1:
-						lw $s6, 0($t4)
-						#mul $s6, $s6, 1
+						lw $s6, 4($t4)	
 						add $t5, $t5, $s6
 						addi $s4, $s4, 1
 						addi $s7, $s7, 1
 						j somaPosicoes
 						
 					mult10:
-						lw $s6, 4($t4)
+						lw $s6, 8($t4)
 						mul $s6, $s6, 10
 						add $t5, $t5, $s6
 						addi $s4, $s4, 1
@@ -160,7 +147,7 @@
 						j somaPosicoes
 						
 					mult100:
-						lw $s6, 8($t4)
+						lw $s6, 12($t4)
 						mul $s6, $s6, 100
 						add $t5, $t5, $s6
 						addi $s4, $s4, 1
@@ -171,29 +158,108 @@
 				formula:
 					sub $t5, $t6, $t5
 					
-					# r1 = t5 / 100 parte inteira
-					# rt = t5 - 100
-					# r2 = rt / 10 parte inteira
-					# r3 = rt - (t7 * 10) isso é unidade
+				
+				
+				addi $s6, $zero, 10
+				slt $s0, $t5, $s6
+				beq $s3, $s0, escreveQuandoApenasUm
+				
+				addi $s6, $zero, 100
+				beq $s3, $s0, divisaopor10
 					
-					# cada r subtrai 48 e escreve no arquivo sem espaço
+				divisaopor100:
+					add $s5, $zero, $zero # cont
+					addi $s7, $zero, 100
+					add $s3, $t5, $zero # numero que diminui
+					
+					voltaLoop100:
+					add $s6, $zero, $zero # flag de comparação
+					slt $s6, $s7, $s3
+					beq $s6, $zero, escreveArquivo100
+
+					loopDivide100:
+						addi $s5, $s5, 1
+						sub $s3, $s3, $s7
+						j voltaLoop100
+					
+					#Escreve centena no arquivo
+					escreveArquivo100:
+					addi $s5, $s5, 48
+					sw $s5, buffer_saida 					
+					move $a0, $t1						
+					la  $a1, buffer_saida  					
+					add  $a2,  $zero, $t3	 				
+					addi $v0, $zero, 15	 			
+					syscall
+					
+					sub $s0, $t5, $s7
+				
+				divisaopor10:
+					add $s5, $zero, $zero # cont
+					addi $s7, $zero, 10
+					add $s3, $s0, $zero # numero que diminui
+					
+					voltaLoop10:
+					add $s6, $zero, $zero
+					slt $s6, $s7, $s3
+					beq $s6, $zero, escreveArquivo10
+
+					loopDivide10:
+						addi $s5, $s5, 1
+						sub $s3, $s3, $s7
+						j voltaLoop10
+					
+					#Escreve dezena no arquivo
+					escreveArquivo10:
+					addi $s5, $s5, 48
+					sw $s5, buffer_saida 					
+					move $a0, $t1						
+					la  $a1, buffer_saida  					
+					add  $a2,  $zero, $t3	 				
+					addi $v0, $zero, 15	 			
+					syscall	
+					addi $s5, $s5, -48
+					
+					
+				# trata unidade	
+				
+				mul $s5, $s5, 10
+				sub $s0, $s0, $s5
+
+
+				#Escreve unidade no arquivo
+				addi $s0, $s0, 48
+				sw $s0, buffer_saida 					
+				move $a0, $t1						
+				la  $a1, buffer_saida  					
+				add  $a2,  $zero, $t3	 				
+				addi $v0, $zero, 15	 			
+				syscall
+				j naoLoop
+				
+				escreveQuandoApenasUm:
+				addi $t5, $t5, 48
+				sw $t5, buffer_saida 					
+				move $a0, $t1						
+				la  $a1, buffer_saida  					
+				add  $a2,  $zero, $t3	 				
+				addi $v0, $zero, 15	 			
+				syscall
+				addi $t5, $zero, 48
 			
-	
-			# Aqui o valor obtido na fórmula é passado para o buffer e é escrito no arquivo de saída	
-			sw $t6, buffer_saida # move o buffer para o $t5
-			move $a0, $t1	# descriptor que está em t1 vem para a0
-			la  $a1, buffer_saida  # buffer de saida é o mesmo
-			add  $a2,  $zero, $t3	 # a leitura (syscall) 14 retorna a quantidade de caracteres em v0. Precisa ser passado aqui
-			addi $v0, $zero, 15	 # syscall para escrever no arquivo
-			syscall
+			naoLoop:
+			
+			add $t5, $zero, $zero
+			sw $t5, 4($t4)
+			sw $t5, 8($t4)
+			sw $t5, 12($t4)
 			
 			move $a0, $t1
 			la $a1, espaco
 			addi $v0, $zero, 15
 			syscall
 			
-			add $t5, $zero, $zero
-			
+				
 			j definicoesLoop
 			
 		# desempilha registradores
